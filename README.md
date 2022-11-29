@@ -1,4 +1,4 @@
-# EmotionRecognition
+# FacialExpressionRecognition
 A Computer Vision project made for McGill's COMP 558 class. 
 
 ## Get started
