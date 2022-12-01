@@ -9,6 +9,11 @@ pip install numpy
 
 pip install opencv-contrib-python
 
+#### For landmark detection: dlib
+
+pip install cmake
+pip install dlib
+
 ### Documentation
 
 https://docs.opencv.org/4.x/
