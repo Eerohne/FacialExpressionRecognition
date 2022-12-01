@@ -12,6 +12,7 @@ pip install opencv-contrib-python
 #### For landmark detection: dlib
 
 pip install cmake
+
 pip install dlib
 
 ### Documentation
