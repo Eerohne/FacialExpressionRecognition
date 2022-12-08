@@ -15,6 +15,9 @@ pip install cmake
 
 pip install dlib
 
+#### Using requirements.txt
+pip install -r requirements.txt
+
 ### Documentation
 
 https://docs.opencv.org/4.x/
