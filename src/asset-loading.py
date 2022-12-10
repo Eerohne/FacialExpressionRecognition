@@ -37,9 +37,26 @@ plt.imshow(img3, cmap="gray")
 plt.show()
 
 
-# List of emotions
+# List of emotions. Each emotion in the model will be represented by its index in  this list
 emotions = ["anger", "contempt", "disgust", "fear", "happy", "sadness", "surprise"]
-assetFolder = "assets/ck+/ck/CK+48"
 
+# Folder containing the dataset
+asset_folder = "../assets/ck+/ck/CK+48"
+
+dataset = []
+# Load dataset
+for emotion in emotions:
+    path = os.path.join(asset_folder, emotion)
+    img_emotion = emotions.index(emotion)
+    for img_name in os.listdir(path):
+        img = cv.imread(os.path.join(path, img_name), cv.IMREAD_GRAYSCALE)
+        img = preprocess_img(img)
+        dataset.append([img_emotion, img])
+
+
+print(len(dataset))
+
+
+hog = cv.HogDescriptor()
 
 
