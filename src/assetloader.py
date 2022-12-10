@@ -14,27 +14,27 @@ def preprocess_img(img):
 
 # Open Image and convert it to grayscale (the images are already in greyscale, but I am doing this to avoid any issue)
 # img2 = cv.imread("../assets/ck+/ck/CK+48/anger/S029_001_00000018.png", cv.IMREAD_GRAYSCALE)
-img2 = cv.imread("../assets/ck+/ck/CK+48/anger/S042_004_00000020.png", cv.IMREAD_GRAYSCALE)
-
-print(img2.shape)
-
-# Plot the image
-plt.imshow(img2, cmap="gray")
-plt.show()
-
-im = cv.GaussianBlur(img2, (3, 3), 1)
-plt.imshow(im, cmap="gray")
-plt.show()
-
-# histogram equilization
-dist = cv.equalizeHist(im)
-
-plt.imshow(dist, cmap="gray")
-plt.show()
-
-img3 = preprocess_img(cv.imread("../assets/ck+/ck/CK+48/anger/S042_004_00000020.png", cv.IMREAD_GRAYSCALE))
-plt.imshow(img3, cmap="gray")
-plt.show()
+# img2 = cv.imread("../assets/ck+/ck/CK+48/anger/S042_004_00000020.png", cv.IMREAD_GRAYSCALE)
+#
+# print(img2.shape)
+#
+# # Plot the image
+# plt.imshow(img2, cmap="gray")
+# plt.show()
+#
+# im = cv.GaussianBlur(img2, (3, 3), 1)
+# plt.imshow(im, cmap="gray")
+# plt.show()
+#
+# # histogram equilization
+# dist = cv.equalizeHist(im)
+#
+# plt.imshow(dist, cmap="gray")
+# plt.show()
+#
+# img3 = preprocess_img(cv.imread("../assets/ck+/ck/CK+48/anger/S042_004_00000020.png", cv.IMREAD_GRAYSCALE))
+# plt.imshow(img3, cmap="gray")
+# plt.show()
 
 
 # List of emotions. Each emotion in the model will be represented by its index in  this list
