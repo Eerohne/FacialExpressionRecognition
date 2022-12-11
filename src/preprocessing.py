@@ -7,7 +7,18 @@ import os
 # globals
 detector = dlib.get_frontal_face_detector()
 predictor = dlib.shape_predictor('assets/landmarkModel/shape_predictor_68_face_landmarks.dat')
+img_size = 128
+dataset = "assets\\ck+_128"
+emotion = "anger"
+use_optimization = False
 
+(rows, cols) = (img_size, img_size)
+
+# Function that blurs and equalizes the image before returning it
+def preprocessImg(img):
+    img = cv.GaussianBlur(img, (3, 3), 1)
+    img = cv.equalizeHist(img)
+    return img
 
 def getLoi(landmarks):
     # landmarks of interest
@@ -30,7 +41,6 @@ def getLoi(landmarks):
     loi["rlbrow"] = landmarks[22]
     loi["rtbrow"] = landmarks[24]
     loi["rrbrow"] = landmarks[26]
-
     return loi
 
 def plotLandmarks(img, loi):
@@ -59,24 +69,30 @@ def getLandmarks(img):
     return shape
 
 def hashDistance(img1, img2):
+    #showTwoImages(img1, img2, "before resize")
     # resize to 8x8
     img1 = cv.resize(img1, (8, 8), interpolation=cv.INTER_AREA)
     img2 = cv.resize(img2, (8, 8), interpolation=cv.INTER_AREA)
+
     # avg intensity
     m1 = img1.mean()
     m2 = img2.mean()
+
+    #print(m1, m2)
+    #showTwoImages(img1, img2, "after resize")
+
     # threshold image, 255 for white pixel (visualization   )
-    img1 = np.where(img1 > m1, 255, 0).astype(np.uint8)
-    img2 = np.where(img2 > m2, 255, 0).astype(np.uint8)
+    img1 = np.where(img1 > m1, 1, 0).astype(np.uint8)
+    img2 = np.where(img2 > m2, 1, 0).astype(np.uint8)
+    #showTwoImages(img1, img2, "after treshhold")
+    
     # hamming distance
     hd = np.count_nonzero(img1!=img2)
-
-    print(hd)
+    #   print(hd)
     return hd
 
 
-def transform(img, size):
-    rows, cols = size
+def transform(img):
     landmarks = getLandmarks(img)
     landmarks =  np.int_(np.c_[ landmarks, np.ones(68) ])
 
@@ -105,8 +121,8 @@ def transform(img, size):
     # plt.show()
 
     # normalization
-    targetx = 0.29*64
-    targety = 0.37*64 
+    targetx = 0.29*img_size
+    targety = 0.37*img_size
     scalex = targetx/loi["leye"][0]
     scaley = targety/loi["leye"][1]
     img = cv.resize(img, None, fx=scalex, fy=scaley)
@@ -119,50 +135,19 @@ def transform(img, size):
 
     return img, loi
 
-
-# check b/w neutral and angry
-def main():
-    imgs = []
-    processed = []
-    dataset = "assets\\ck+"
-    emotion = "anger"
-
-    for subdir, dirs, files in os.walk(dataset+"\\"+emotion):
-        for file in files:
-            # for every emotion, find neutral emotion
-            subject = file.split("_")[0]
-            i = 1
-            neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
-            while(not os.path.exists(neutral_file) or i > 1000): # change to exception subject not found
-                i+=1
-                neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
-            current_file = dataset + "\\" + emotion + "\\" + file
-            imgs.append((current_file, neutral_file))
-
-    for img_pair in imgs:
-        processed_pair = []
-        for img in img_pair:
-            img = cv.imread(img)
-            img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-
-            rows = len(img)
-            cols = len(img[0]) 
-            size = (rows, cols)
-            (img, loi) = transform(img, size)
-            processed_pair.append((img, loi, size))
-        processed.append(processed_pair)
-
+def getOptimizedRegion(imgs):
+    
     # calculate bounding distances for active regions, ie. left/right eye, mouth
     regions = ["leye", "reye", "mouth"]
     bounds = {}
     optimal_l = {}
     for region in regions:
-        currmin = 64 # max image size
+        currmin = img_size # max image size
         # iterate through all image pairs (emotion, neutral)
-        for img_pair in processed:
+        for img_pair in imgs:
             # iterate through the pair (emotion --> neutral)
             # compute minimum bounding distance
-            for (img, loi, size) in img_pair:
+            for (img, loi) in img_pair:
                 d = []
                 if(region == "reye"):
                     d.append(loi[region][0]-loi["lnose"][0]) # x-distance to edges
@@ -177,26 +162,26 @@ def main():
                 currmin = min(currmin, min(d))
             
         bounds[region]= currmin
-
+        print(currmin)
         similarities = []
         # iterate through all image pairs (emotion, neutral)
-        for img_pair in processed:
+        for img_pair in imgs:
             similarity = []
             # iterate through the pair (emotion --> neutral)
-            for l in range(1, bounds[region]+1):
+            for l in range(2, bounds[region]+1):
                 hash=0
-                (img1, loi1, size1) = img_pair[0]
+                (img1, loi1) = img_pair[0]
                 left1 = loi1[region][0] - l
                 right1 = loi1[region][0] + l
                 top1 = loi1[region][1] - l
                 bot1 = loi1[region][1] + l
 
-                (img2, loi2, size2) = img_pair[1]
+                (img2, loi2) = img_pair[1]
                 left2 = loi2[region][0] - l
                 right2 = loi2[region][0] + l
                 top2 = loi2[region][1] - l
                 bot2 = loi2[region][1] + l
-
+            
                 hash = hashDistance(img1[top1:bot1, left1:right1], img2[top2:bot2, left2:right2])
                 similarity.append(1/(hash+1))
             similarities.append(similarity)
@@ -204,9 +189,105 @@ def main():
         similarities = np.array(similarities).mean(axis=0)
         print(similarities)
         # choose bounding size that maximizes similarity
-        optimal_l[region] = np.argmax(similarity)+1 # indexed by 0
+        optimal_l[region] = np.argmax(similarity)+2 # indexed by 0
 
     print(optimal_l)
+
+    return optimal_l
+
+def showImages(imgs, title=""):
+    numimg = len(imgs)
+    plt.title(title)
+
+    for i, img in enumerate(imgs):
+        plt.subplot(1, numimg, i+1)
+        plt.imshow(img, cmap="gray")
+
+    plt.show()
+
+# check b/w neutral and angry
+def main():
+    imgs = []
+    processed = []
+
+    print("Starting pre-processing")
+    if not os.path.exists(dataset):
+        print("No such dataset path")
+        return
+
+    # load images
+    print("Loading dataset images")
+    for subdir, dirs, files in os.walk(dataset+"\\"+emotion):
+        for file in files:
+            # for every emotion, find neutral emotion
+            subject = file.split("_")[0]
+            i = 1
+            neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
+            while(not os.path.exists(neutral_file) or i > 1000): # change to exception subject not found
+                i+=1
+                neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
+            current_file = dataset + "\\" + emotion + "\\" + file
+            imgs.append((current_file, neutral_file))
+    print("Finished loading images")
+    
+    # pre-process images
+    print("Starting image pre-processing")
+    for img_pair in imgs:
+        processed_pair = []
+        for img in img_pair:
+            img = cv.imread(img)
+            #showImages([img])
+
+            # grayscale
+            img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+            #showImages([img])
+
+            # blur and equalize
+            img = preprocessImg(img)
+            #showImages([img])
+            
+            # rotate to aligned image, normalize
+            (img, loi) = transform(img)
+            processed_pair.append((img, loi))
+            #showImages([img])
+        processed.append(processed_pair)
+    print("Finished pre-processing images")
+
+    # can use manual values for cropping
+    if use_optimization:
+        # get optimized salient areas
+        print("Starting optimized region search")
+        optimal_l = getOptimizedRegion(processed)
+        print("Finished optimized region search")
+    else:
+        optimal_l = {
+            "leye": 20,
+            "reye": 20,
+            "mouth": 20
+        }
+    regions = optimal_l.keys()
+    
+    # derive salient areas from optimized regions
+    print("Computing salient areas")
+    salient_areas = []
+    for (img_meta, na) in processed:
+        cimg = {}
+        (img, loi) = img_meta
+
+        for region in regions:
+            left = loi[region][0] - optimal_l[region]
+            right = loi[region][0] + optimal_l[region]
+            top = loi[region][1] - optimal_l[region]
+            bot = loi[region][1] + optimal_l[region]
+            cimg[region] = (img[top:bot, left:right])
+
+        salient_areas.append(cimg)
+        showImages(cimg.values())
+    print("Finished salient areas")
+    
+    # salient areas will be an array of dictionaries
+    # img = {"leye": <left_eye_salient_area>, "reye": <>, "mouth": <>}
+    # salient_areas = [img1, img2, img3,..., imgn]
 
 
 if __name__ == "__main__":
