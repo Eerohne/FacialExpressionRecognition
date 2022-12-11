@@ -9,12 +9,12 @@ import os
 def preprocess_img(img):
     img = cv.GaussianBlur(img, (3, 3), 1)
     img = cv.equalizeHist(img)
+    # img = cv.Canny(img, 250, 400)
     return img
-
 
 # Open Image and convert it to grayscale (the images are already in greyscale, but I am doing this to avoid any issue)
 # img2 = cv.imread("../assets/ck+/ck/CK+48/anger/S029_001_00000018.png", cv.IMREAD_GRAYSCALE)
-# img2 = cv.imread("../assets/ck+/ck/CK+48/anger/S042_004_00000020.png", cv.IMREAD_GRAYSCALE)
+img2 = cv.imread("../assets/ck+/ck/CK+48/anger/S042_004_00000020.png", cv.IMREAD_GRAYSCALE)
 #
 # print(img2.shape)
 #
@@ -36,7 +36,6 @@ def preprocess_img(img):
 # plt.imshow(img3, cmap="gray")
 # plt.show()
 
-
 # List of emotions. Each emotion in the model will be represented by its index in  this list
 emotions = ["anger", "contempt", "disgust", "fear", "happy", "sadness", "surprise"]
 
@@ -53,10 +52,11 @@ for emotion in emotions:
         img = preprocess_img(img)
         dataset.append([img_emotion, img])
 
-
 print(len(dataset))
 
-
-hog = cv.HogDescriptor()
-
-
+hog = cv.HOGDescriptor()  # Helps extract HOG features from an image
+imhog = hog.compute(dataset[1][1])
+imhog = hog.compute()
+#
+# print(imhog)
+# print(type(imhog))
