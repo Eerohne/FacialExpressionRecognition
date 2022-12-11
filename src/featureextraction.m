@@ -30,12 +30,7 @@ for i = 1:length(emotions)
     files = dir("../assets/ck+/ck/CK+48/" + emotion + "/*.png");
     for image = files'
         img = imread(image.folder + "\" + image.name);
-        img = preprocess_image(img);
-
-
-
-        [hogfeatures, visualization] = extractHOGFeatures(img, "CellSize", [4,4]);
-        X(imcount, :) = hogfeatures;
+        X(imcount, :) = preprocess_image(img);
         y(imcount) = emotion;
 
         imcount = imcount + 1;
@@ -47,7 +42,9 @@ save("dataset", "X", "y");
 
 % This function returns an image that is slightly blured and equalized
 % using histogram equalization
-function preprocessed = preprocess_image(img)
+function features = preprocess_image(img)
     preprocessed = imgaussfilt(img, 1);
     preprocessed = histeq(preprocessed);
+
+    features = extractHOGFeatures(preprocessed, "CellSize", [4,4]);
 end

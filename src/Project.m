@@ -1,7 +1,7 @@
 
-SetNum=7178;
+SetNum=981;
 
-digitDatasetPath = 'C:\Users\ymerz\OneDrive\Documents\McGill\Fall 2022\COMP 558\Project\Data set\FER2\train';
+digitDatasetPath = '../assets/ck+/ck/CK+48/';
 % fullfile(matlabroot,'toolbox','nnet','nndemos', 'nndatasets','DigitDataset');
 imds = imageDatastore(digitDatasetPath, ...
     'IncludeSubfolders',true,'LabelSource','foldernames');
@@ -18,11 +18,10 @@ labelCount = countEachLabel(imds)
 
 img = readimage(imds,1);
 
-numTrainFiles = 300;
-[imdsTrain,imdsValidation] = splitEachLabel(imds,numTrainFiles,'randomize');
-digitDatasetPath = 'C:\Users\ymerz\OneDrive\Documents\McGill\Fall 2022\COMP 558\Project\Data set\FER2\test';
-imdsValidation= imageDatastore(digitDatasetPath, ...
-    'IncludeSubfolders',true,'LabelSource','foldernames');
+numTrainFiles = 54;
+[imdsTrain, imdsValidation] = splitEachLabel(imds,numTrainFiles,'randomize');
+digitDatasetPath = '../assets/ck+/ck/CK+48/';
+imdsValidation= imageDatastore(digitDatasetPath, 'IncludeSubfolders',true,'LabelSource','foldernames');
 
 layers = [
     imageInputLayer([48 48 1]);
@@ -59,7 +58,7 @@ net = trainNetwork(imdsTrain,layers,options);
 YPred = classify(net,imdsValidation);
 YValidation = imdsValidation.Labels;
 
-accuracy = sum(YPred == YValidation)/numel(YValidation)
+accuracy = sum(YPred == YValidation)/numel(YValidation);
 %{
 digitDatasetPath = 'C:\Users\ymerz\OneDrive\Documents\McGill\Fall 2022\COMP 558\Project\Data set\FER2\test';
 testSet= imageDatastore(digitDatasetPath, ...
