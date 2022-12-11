@@ -282,7 +282,7 @@ def main():
             cimg[region] = (img[top:bot, left:right])
 
         salient_areas.append(cimg)
-        showImages(cimg.values())
+        # showImages(cimg.values())
     print("Finished salient areas")
     
     # salient areas will be an array of dictionaries
