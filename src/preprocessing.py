@@ -4,18 +4,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-# globals
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor('assets/landmarkModel/shape_predictor_68_face_landmarks.dat')
-img_size = 128
-dataset = "assets\\ck+_128"
-emotion = "anger"
-use_optimization = False
-
-(rows, cols) = (img_size, img_size)
+# default values
+# detector = dlib.get_frontal_face_detector()
+# predictor = dlib.shape_predictor('assets/landmarkModel/shape_predictor_68_face_landmarks.dat')
+# img_size = 128
+# dataset = "assets\\ck+_128"
+# emotion = "anger"
+# use_optimization = True
 
 # Function that blurs and equalizes the image before returning it
-def preprocessImg(img):
+def normalizeImg(img):
     img = cv.GaussianBlur(img, (3, 3), 1)
     img = cv.equalizeHist(img)
     return img
@@ -53,7 +51,7 @@ def plotLandmarks(img, loi):
 
     return newimg
 
-def getLandmarks(img):
+def getLandmarks(img, detector, predictor):
     # Detect the face
     rects = detector(img, 1)
     # Detect landmarks for each face
@@ -91,9 +89,10 @@ def hashDistance(img1, img2):
     #   print(hd)
     return hd
 
+def transform(img, detector, predictor):
+    img_size = len(img)
 
-def transform(img):
-    landmarks = getLandmarks(img)
+    landmarks = getLandmarks(img, detector, predictor)
     landmarks =  np.int_(np.c_[ landmarks, np.ones(68) ])
 
     loi = getLoi(landmarks)
@@ -108,12 +107,12 @@ def transform(img):
     theta = theta*180/np.pi # to degs
 
     # rotation matrix
-    R = cv.getRotationMatrix2D((cols/2,rows/2),theta,1) 
+    R = cv.getRotationMatrix2D((img_size/2,img_size/2),theta,1) 
 
     # rotate to upright face
-    img = cv.warpAffine(img,R,(cols,rows)) 
+    img = cv.warpAffine(img,R,(img_size,img_size)) 
 
-    newlandmarks = getLandmarks(img)
+    newlandmarks = getLandmarks(img, detector, predictor)
     loi = getLoi(newlandmarks)
 
     # rotate_img = plotLandmarks(img, loi)
@@ -125,8 +124,8 @@ def transform(img):
     targety = 0.37*img_size
     scalex = targetx/loi["leye"][0]
     scaley = targety/loi["leye"][1]
-    img = cv.resize(img, None, fx=scalex, fy=scaley)
-    newlandmarks = getLandmarks(img)
+    img = cv.resize(img, None, fx=scalex, fy=scaley, interpolation=cv.INTER_AREA)
+    newlandmarks = getLandmarks(img, detector, predictor)
     loi = getLoi(newlandmarks)
 
     # scale_img = plotLandmarks(img, loi)
@@ -135,13 +134,13 @@ def transform(img):
 
     return img, loi
 
-def getOptimizedRegion(imgs):
+def getOptimizedRegion(imgs, img_size):
     
     # calculate bounding distances for active regions, ie. left/right eye, mouth
     regions = ["leye", "reye", "mouth"]
     bounds = {}
     optimal_l = {}
-    for region in regions:
+    for i, region in enumerate(regions):
         currmin = img_size # max image size
         # iterate through all image pairs (emotion, neutral)
         for img_pair in imgs:
@@ -156,19 +155,20 @@ def getOptimizedRegion(imgs):
                 if(region == "leye"):
                     d.append(loi["rnose"][0]-loi[region][0])
                 else:
-                    d.append(cols-loi[region][0]) 
+                    d.append(img_size-loi[region][0]) 
                 d.append(loi[region][1]) # y-distance to edges
-                d.append(rows-loi[region][1])
+                d.append(img_size-loi[region][1])
                 currmin = min(currmin, min(d))
             
         bounds[region]= currmin
-        print(currmin)
+        #print(f"min bound: {currmin}")
         similarities = []
+        startingl=6
         # iterate through all image pairs (emotion, neutral)
         for img_pair in imgs:
             similarity = []
             # iterate through the pair (emotion --> neutral)
-            for l in range(2, bounds[region]+1):
+            for l in range(startingl, bounds[region]+1):
                 hash=0
                 (img1, loi1) = img_pair[0]
                 left1 = loi1[region][0] - l
@@ -177,21 +177,21 @@ def getOptimizedRegion(imgs):
                 bot1 = loi1[region][1] + l
 
                 (img2, loi2) = img_pair[1]
-                left2 = loi2[region][0] - l
-                right2 = loi2[region][0] + l
-                top2 = loi2[region][1] - l
-                bot2 = loi2[region][1] + l
             
-                hash = hashDistance(img1[top1:bot1, left1:right1], img2[top2:bot2, left2:right2])
+                hash = hashDistance(img1[top1:bot1, left1:right1], img2[top1:bot1, left1:right1])
                 similarity.append(1/(hash+1))
             similarities.append(similarity)
         # average of similarities across people
         similarities = np.array(similarities).mean(axis=0)
-        print(similarities)
+        #print(similarities)
         # choose bounding size that maximizes similarity
-        optimal_l[region] = np.argmax(similarity)+2 # indexed by 0
-
-    print(optimal_l)
+        optimal_l[region] = np.argmax(similarities)+startingl # indexed by 0
+        #print(region, np.argmax(similarities))
+    #     plt.subplot(3, 1, i+1)
+    #     plt.title(region)
+    #     plt.plot(similarities)
+    # plt.show()
+    # print(optimal_l)
 
     return optimal_l
 
@@ -205,8 +205,14 @@ def showImages(imgs, title=""):
 
     plt.show()
 
-# check b/w neutral and angry
-def main():
+def preprocess(detector=dlib.get_frontal_face_detector(), 
+               predictor=dlib.shape_predictor('assets/landmarkModel/shape_predictor_68_face_landmarks.dat'),
+               img_size=128,
+               dataset="assets\\ck+_128",
+               emotion="anger",
+               output_size=64,
+               use_optimization = False,
+               write_dir=None):
     imgs = []
     processed = []
 
@@ -243,11 +249,11 @@ def main():
             #showImages([img])
 
             # blur and equalize
-            img = preprocessImg(img)
+            img = normalizeImg(img)
             #showImages([img])
             
             # rotate to aligned image, normalize
-            (img, loi) = transform(img)
+            (img, loi) = transform(img, detector, predictor)
             processed_pair.append((img, loi))
             #showImages([img])
         processed.append(processed_pair)
@@ -257,7 +263,7 @@ def main():
     if use_optimization:
         # get optimized salient areas
         print("Starting optimized region search")
-        optimal_l = getOptimizedRegion(processed)
+        optimal_l = getOptimizedRegion(processed, img_size)
         print("Finished optimized region search")
     else:
         optimal_l = {
@@ -279,16 +285,26 @@ def main():
             right = loi[region][0] + optimal_l[region]
             top = loi[region][1] - optimal_l[region]
             bot = loi[region][1] + optimal_l[region]
-            cimg[region] = (img[top:bot, left:right])
 
+            # crop active area and resize to a standard output size
+            crop_area = (img[top:bot, left:right])
+            active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
+            cimg[region] = active_area
+        
         salient_areas.append(cimg)
-        # showImages(cimg.values())
-    print("Finished salient areas")
+        #showImages(cimg.values())
+    print("Returning salient areas")
     
     # salient areas will be an array of dictionaries
     # img = {"leye": <left_eye_salient_area>, "reye": <>, "mouth": <>}
     # salient_areas = [img1, img2, img3,..., imgn]
-
+    if write_dir is not None:
+        pass
+    else:
+        return salient_areas
+    
+def main():
+   preprocess(use_optimization=True)
 
 if __name__ == "__main__":
     main()
