@@ -9,6 +9,12 @@ pip install numpy
 
 pip install opencv-contrib-python
 
+pip install sk-image
+
+pip install scipy
+
+pip install matplotlib
+
 #### For landmark detection: dlib
 
 pip install cmake
