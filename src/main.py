@@ -1,5 +1,5 @@
 # example usage of preprocessing.py
-from preprocessing import preprocess # import preprocess()
+from preprocessing import preprocess  # import preprocess()
 
 # these are the default parameters of preprocess
 # def preprocess(detector=dlib.get_frontal_face_detector(), 
@@ -18,3 +18,5 @@ from preprocessing import preprocess # import preprocess()
 #   img = {"leye": <left_eye_salient_area>, "reye": <>, "mouth": <>}
 #   salient_areas = [img1, img2, img3,..., imgn]
 salient_areas = preprocess(emotion="surprise", use_optimization=True)
+
+
