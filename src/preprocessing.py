@@ -125,9 +125,18 @@ def transform(img, detector, predictor):
     scalex = targetx/loi["leye"][0]
     scaley = targety/loi["leye"][1]
     img = cv.resize(img, None, fx=scalex, fy=scaley, interpolation=cv.INTER_AREA)
+    ylen, xlen = img.shape
+    # crop/pad image to 128x128
+    if ylen < img_size:
+        img = np.append(img, np.zeros((img_size-ylen, xlen), dtype=np.uint8), axis=0)
+    else:
+        img = img[:img_size, :]
+    if xlen < img_size:
+        img = np.append(img, np.zeros((img_size, img_size-xlen), dtype=np.uint8), axis=1)
+    else:
+        img = img[:, :img_size]
     newlandmarks = getLandmarks(img, detector, predictor)
     loi = getLoi(newlandmarks)
-
     # scale_img = plotLandmarks(img, loi)
     # plt.imshow(scale_img, cmap="gray")
     # plt.show()
@@ -183,13 +192,13 @@ def getOptimizedRegion(imgs, img_size):
             similarities.append(similarity)
         # average of similarities across people
         similarities = np.array(similarities).mean(axis=0)
-        #print(similarities)
+        # print(similarities)
         # choose bounding size that maximizes similarity
         optimal_l[region] = np.argmax(similarities)+startingl # indexed by 0
-        #print(region, np.argmax(similarities))
-    #     plt.subplot(3, 1, i+1)
-    #     plt.title(region)
-    #     plt.plot(similarities)
+        # print(region, np.argmax(similarities))
+        # plt.subplot(3, 1, i+1)
+        # plt.title(region)
+        # plt.plot(similarities)
     # plt.show()
     # print(optimal_l)
 
@@ -250,12 +259,12 @@ def preprocess(detector=dlib.get_frontal_face_detector(),
 
             # blur and equalize
             img = normalizeImg(img)
-            #showImages([img])
+            # showImages([img])
             
             # rotate to aligned image, normalize
             (img, loi) = transform(img, detector, predictor)
             processed_pair.append((img, loi))
-            #showImages([img])
+            # showImages([img])
         processed.append(processed_pair)
     print("Finished pre-processing images")
 
@@ -277,7 +286,9 @@ def preprocess(detector=dlib.get_frontal_face_detector(),
     print("Computing salient areas")
     salient_areas = []
     for (img_meta, na) in processed:
-        cimg = {}
+
+        # cimg = {}
+        cimg = np.zeros((img_size, img_size))
         (img, loi) = img_meta
 
         for region in regions:
@@ -285,14 +296,17 @@ def preprocess(detector=dlib.get_frontal_face_detector(),
             right = loi[region][0] + optimal_l[region]
             top = loi[region][1] - optimal_l[region]
             bot = loi[region][1] + optimal_l[region]
+            
+            # paste salient area onto black image
+            cimg[top:bot, left:right] = img[top:bot, left:right]
 
-            # crop active area and resize to a standard output size
-            crop_area = (img[top:bot, left:right])
-            active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
-            cimg[region] = active_area
-        
+            # crop_area = (img[top:bot, left:right])
+            # active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
+            # cimg[region] = active_area
+        cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
+    
         salient_areas.append(cimg)
-        #showImages(cimg.values())
+        # showImages([cimg])
     print("Returning salient areas")
     
     # salient areas will be an array of dictionaries
@@ -304,7 +318,7 @@ def preprocess(detector=dlib.get_frontal_face_detector(),
         return salient_areas
     
 def main():
-   preprocess(use_optimization=True)
+   preprocess(emotion="surprise", use_optimization=True)
 
 if __name__ == "__main__":
     main()
