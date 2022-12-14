@@ -219,131 +219,14 @@ class PreProcessor:
 
         plt.show()
 
-
     def preprocess( self,
+                    img,
                     img_size=128,
                     output_size=64,
-                    dataset="assets\\ck+_128",
-                    emotion="anger",
                     eye_r=20,
-                    mouth_r=20,
-                    use_optimization=False,
-                    write_dir=None):    
-                
-        imgs = []
-        processed = []
-        file_names = []
-
-        print("Starting pre-processing")
-        if not os.path.exists(dataset):
-            print("No such dataset path")
-            return
-
-        # load images
-        print("Loading dataset images")
-        for subdir, dirs, files in os.walk(dataset + "\\" + emotion):
-            for file in files:
-                # for every emotion, find neutral emotion
-                subject = file.split("_")[0]
-                i = 1
-                neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
-
-                if use_optimization:
-                    while (not os.path.exists(neutral_file) or i > 1000):  # change to exception subject not found
-                        i += 1
-                        neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
-                    current_file = dataset + "\\" + emotion + "\\" + file
-                    imgs.append((current_file, neutral_file))
-                else:
-                    current_file = dataset + "\\" + emotion + "\\" + file
-                    imgs.append((current_file, None))
-                file_names.append(file)
-        print("Finished loading images")
-
+                    mouth_r=20):
         # pre-process images
-        print("Starting image pre-processing")
-        for img_pair in imgs:
-            processed_pair = []
-            for img in img_pair:
-                if img is None:
-                    processed_pair.append(None)
-                    continue
-                img = cv.imread(img)
-                # showImages([img])
-
-                # grayscale
-                img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-                # showImages([img])
-
-                # blur and equalize
-                img = self.normalizeImg(img)
-                # showImages([img])
-                
-                # rotate to aligned image, normalize
-                (img, loi) = self.transform(img)
-                processed_pair.append((img, loi))
-                #showImages([img])
-            processed.append(processed_pair)
-        print("Finished pre-processing images")
-
-        # can use manual values for cropping
-        if use_optimization:
-            # get optimized salient areas
-            print("Starting optimized region search")
-            optimal_l = self.getOptimizedRegion(processed, img_size)
-            print("Finished optimized region search")
-        else:
-            optimal_l = {
-                "leye": eye_r,
-                "reye": eye_r,
-                "mouth": mouth_r
-            }
-        regions = optimal_l.keys()
-
-        # derive salient areas from optimized regions
-        print("Computing salient areas")
-        salient_areas = []
-        for i, (img_meta, na) in enumerate(processed):
-
-            # cimg = {}
-            cimg = np.zeros((img_size, img_size))
-            (img, loi) = img_meta
-
-            for region in regions:
-                left = loi[region][0] - optimal_l[region]
-                right = loi[region][0] + optimal_l[region]
-                top = loi[region][1] - optimal_l[region]
-                bot = loi[region][1] + optimal_l[region]
-                
-                # paste salient area onto black image
-                cimg[top:bot, left:right] = img[top:bot, left:right]
-
-                # crop_area = (img[top:bot, left:right])
-                # active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
-                # cimg[region] = active_area
-            cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
-        
-            salient_areas.append(cimg)
-            if write_dir is not None: # write to file as well
-                cv.imwrite(write_dir+"/"+file_names[i], cimg)
-            # showImages([cimg])
-        print("Returning salient areas")
-
-        return salient_areas
-
-    def preprocess_single(  self,
-                            img="S010_004_00000019.png",
-                            img_dir="assets\\ck+_128\\anger",
-                            img_size=128,
-                            output_size=64,
-                            eye_r=20,
-                            mouth_r=20,
-                            write_dir=None):
-        # pre-process images
-        file_name = img
         #print("Starting image pre-processing")
-        img = cv.imread(img_dir+"/"+img)
-
         # grayscale
         img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
         # showImages([img])
@@ -380,48 +263,15 @@ class PreProcessor:
         cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
         #print("Returning salient areas")
 
-        if write_dir is not None:
-            cv.imwrite(write_dir+"/"+file_name, cimg)
         return cimg
 
-
+# example usage
 def main():
-
+    img = cv.imread(r"C:\Users\Bryan\Documents\_McGill U3\sem2\COMP558\project\EmotionRecognition\assets\ck+_128\anger\S010_004_00000019.png")
     preProcessor = PreProcessor()
-
-    # single image example
-    # img: specify image location to be processed 
-    # img_dir: specify directory containing image
-    # img_size: specify the image size (assuming NxN image)
-    # output_size: specify the desired output size after cropping, default 64x64
-    # eye_r, mouth_r: pixel radius to crop the salient areas
-    # write_dir: if specified, will write the processed image to the directory
-    # returns: image with the cropped salient areas
-    # sareas = preProcessor.preprocess_single(img="S011_004_00000021.png",
-    #                                         img_dir="assets\\ck+_128\\anger",
-    #                                         img_size=128,
-    #                                         output_size=64,
-    #                                         eye_r=10,
-    #                                         mouth_r=10,
-    #                                         write_dir="testdir")
-    
-    # multi image example
-    # img_size: specify the image size (assuming NxN image)
-    # output_size: specify the desired output size after cropping, default 64x64
-    # dataset: specify the parent directory of the dataset
-    # emotion: specify the emotion directory 
-    # eye_r, mouth_r: pixel radius to crop the salient areas
-    # write_dir: if specified, will write the processed image to the directory
-    # returns: array of images with the cropped salient areas
-    sareas = preProcessor.preprocess(       
-                                        img_size=128,
-                                        output_size=64,
-                                        dataset="assets\\ck+_128",
-                                        emotion="anger",
-                                        eye_r=20,
-                                        mouth_r=20,
-                                        use_optimization=False,
-                                        write_dir="testdir")  
+    sareas = preProcessor.preprocess(img)
+    plt.imshow(sareas, cmap="gray")
+    plt.show()
 
 
 if __name__ == "__main__":
