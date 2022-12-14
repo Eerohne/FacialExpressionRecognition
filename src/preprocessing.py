@@ -222,14 +222,16 @@ def showImages(imgs, title=""):
     plt.show()
 
 
-def preprocess(detector=dlib.get_frontal_face_detector(),
-               predictor=dlib.shape_predictor('../assets/landmarkModel/shape_predictor_68_face_landmarks.dat'),
+def preprocess(landmark_model_path='assets/landmarkModel/shape_predictor_68_face_landmarks.dat',
                img_size=128,
-               dataset="..\\assets\\ck+_128",
+               dataset="assets\\ck+_128",
                emotion="anger",
                output_size=64,
                use_optimization=False,
                write_dir=None):
+               
+    predictor=dlib.shape_predictor(landmark_model_path)
+    detector=dlib.get_frontal_face_detector()
     imgs = []
     processed = []
 

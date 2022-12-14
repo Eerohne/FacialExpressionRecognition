@@ -1,5 +1,7 @@
 # example usage of preprocessing.py
-from preprocessing import preprocess  # import preprocess()
+#from preprocessing import preprocess  # import preprocess()
+from preprocessing_single import PreProcessor  # import preprocess()
+import cv2 as cv
 
 # these are the default parameters of preprocess
 # def preprocess(detector=dlib.get_frontal_face_detector(), 
@@ -17,6 +19,14 @@ from preprocessing import preprocess  # import preprocess()
 # salient_areas will be an array of dictionaries, each one representing an image "img"
 #   img = {"leye": <left_eye_salient_area>, "reye": <>, "mouth": <>}
 #   salient_areas = [img1, img2, img3,..., imgn]
-salient_areas = preprocess(emotion="surprise", use_optimization=True)
+# salient_areas = preprocess(emotion="surprise", use_optimization=True)
+
+# single example
+img = cv.imread(r"C:\Users\Bryan\Documents\_McGill U3\sem2\COMP558\project\EmotionRecognition\assets\ck+_128\anger\S010_004_00000019.png")
+preProcessor = PreProcessor()
+sareas = preProcessor.preprocess(img) # np.array of black image w/ salient areas cropped
+
+
+
 
 
