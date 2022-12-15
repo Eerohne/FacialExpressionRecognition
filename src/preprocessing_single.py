@@ -14,7 +14,7 @@ import os
 # use_optimization = True
 class PreProcessor:
                     
-    def __init__(self, landmark_model_path='assets/landmarkModel/shape_predictor_68_face_landmarks.dat'):
+    def __init__(self, landmark_model_path='../assets/landmarkModel/shape_predictor_68_face_landmarks.dat'):
         self.predictor=dlib.shape_predictor(landmark_model_path)
         self.detector=dlib.get_frontal_face_detector()
 
@@ -267,7 +267,7 @@ class PreProcessor:
 
 # example usage
 def main():
-    img = cv.imread(r"C:\Users\Bryan\Documents\_McGill U3\sem2\COMP558\project\EmotionRecognition\assets\ck+_128\anger\S010_004_00000019.png")
+    img = cv.imread(r"..\assets\ck+_128\anger\S010_004_00000019.png")
     preProcessor = PreProcessor()
     sareas = preProcessor.preprocess(img)
     plt.imshow(sareas, cmap="gray")

@@ -2,7 +2,8 @@
 #from preprocessing import preprocess  # import preprocess()
 from preprocessing_single import PreProcessor  # import preprocess()
 import cv2 as cv
-from extraction import extract_features  # import extract_features()
+import matplotlib.pyplot as plt
+# from extraction import extract_features  # import extract_features()
 
 
 emo = "anger"
@@ -26,12 +27,13 @@ emo = "anger"
 # salient_areas = preprocess(emotion="surprise", use_optimization=True)
 
 # single example
-img = cv.imread(r"C:\Users\Bryan\Documents\_McGill U3\sem2\COMP558\project\EmotionRecognition\assets\ck+_128\anger\S010_004_00000019.png")
-preProcessor = PreProcessor()
-sareas = preProcessor.preprocess(img) # np.array of black image w/ salient areas cropped
-
-
-
+# img = cv.imread(r"..\assets\FER\train\anger\Training_267631.jpg")
+# preProcessor = PreProcessor()
+# sareas = preProcessor.preprocess(img) # np.array of black image w/ salient areas cropped
+#
+# plt.imshow(sareas)
+# plt.show()
+#
 
 
 #
@@ -40,4 +42,7 @@ sareas = preProcessor.preprocess(img) # np.array of black image w/ salient areas
 #extract_features(salient_areas=salient_areas, debug=True, debug_emo=emo)
 
 # Extract all features from dataset. Each emotion will have its own .mat file generated that will contain all the features within its corresponding images
-extract_features()
+#extract_features()
+
+
+

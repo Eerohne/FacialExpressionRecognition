@@ -14,7 +14,7 @@ import os
 # use_optimization = True
 class PreProcessor:
                     
-    def __init__(self, landmark_model_path='assets/landmarkModel/shape_predictor_68_face_landmarks.dat'):
+    def __init__(self, landmark_model_path='../assets/landmarkModel/shape_predictor_68_face_landmarks.dat'):
         self.predictor=dlib.shape_predictor(landmark_model_path)
         self.detector=dlib.get_frontal_face_detector()
 
