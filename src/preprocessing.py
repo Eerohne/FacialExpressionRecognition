@@ -60,6 +60,8 @@ class PreProcessor:
     def getLandmarks(self, img):
         # Detect the face
         rects = self.detector(img, 1)
+        if not rects:
+            return []
         # Detect landmarks for each face
         for rect in rects:
             # Get the landmark points
@@ -99,6 +101,8 @@ class PreProcessor:
         img_size = len(img)
 
         landmarks = self.getLandmarks(img)
+        if len(landmarks)==0:
+            return (img, landmarks)
         landmarks = np.int_(np.c_[landmarks, np.ones(68)])
 
         loi = self.getLoi(landmarks)
@@ -110,38 +114,40 @@ class PreProcessor:
         # face alignment
         theta = np.arctan((loi["reye"][1] - loi["leye"][1]) / (loi["reye"][0] - loi["leye"][0]))  # rads
         theta = theta * 180 / np.pi  # to degs
-
+    
         # rotation matrix
         R = cv.getRotationMatrix2D((img_size / 2, img_size / 2), theta, 1)
 
         # rotate to upright face
         img = cv.warpAffine(img, R, (img_size, img_size))
-
         newlandmarks = self.getLandmarks(img)
+        if len(newlandmarks)==0:
+            return (img, newlandmarks)
         loi = self.getLoi(newlandmarks)
 
-        # rotate_img = plotLandmarks(img, loi)
-        # plt.imshow(rotate_img, cmap="gray")
+        # img = self.plotLandmarks(img, loi)
+        # plt.imshow(img, cmap="gray")
         # plt.show()
 
-        # normalization
-        targetx = 0.29 * img_size
-        targety = 0.37 * img_size
-        scalex = targetx / loi["leye"][0]
-        scaley = targety / loi["leye"][1]
-        img = cv.resize(img, None, fx=scalex, fy=scaley, interpolation=cv.INTER_AREA)
-        ylen, xlen = img.shape
-        # crop/pad image to 128x128
-        if ylen < img_size:
-            img = np.append(img, np.zeros((img_size-ylen, xlen), dtype=np.uint8), axis=0)
-        else:
-            img = img[:img_size, :]
-        if xlen < img_size:
-            img = np.append(img, np.zeros((img_size, img_size-xlen), dtype=np.uint8), axis=1)
-        else:
-            img = img[:, :img_size]
-        newlandmarks = self.getLandmarks(img)
-        loi = self.getLoi(newlandmarks)
+        
+        # # normalization
+        # targetx = 0.29 * img_size
+        # targety = 0.37 * img_size
+        # scalex = targetx / loi["leye"][0]
+        # scaley = targety / loi["leye"][1]
+        # img = cv.resize(img, None, fx=scalex, fy=scaley, interpolation=cv.INTER_AREA)
+        # ylen, xlen = img.shape
+        # # crop/pad image to 128x128
+        # if ylen < img_size:
+        #     img = np.append(img, np.zeros((img_size-ylen, xlen), dtype=np.uint8), axis=0)
+        # else:
+        #     img = img[:img_size, :]
+        # if xlen < img_size:
+        #     img = np.append(img, np.zeros((img_size, img_size-xlen), dtype=np.uint8), axis=1)
+        # else:
+        #     img = img[:, :img_size]
+        # newlandmarks = self.getLandmarks(img)
+        # loi = self.getLoi(newlandmarks)
         # scale_img = self.plotLandmarks(img, loi)
         # plt.imshow(scale_img, cmap="gray")
         # plt.show()
@@ -238,17 +244,20 @@ class PreProcessor:
         if not os.path.exists(dataset):
             print("No such dataset path")
             return
+        elif write_dir is not None and not os.path.exists(write_dir):
+            print("No such ouput path")
+            return
 
         # load images
         print("Loading dataset images")
         for subdir, dirs, files in os.walk(dataset + "\\" + emotion):
             for file in files:
-                # for every emotion, find neutral emotion
-                subject = file.split("_")[0]
-                i = 1
-                neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
 
                 if use_optimization:
+                     # for every emotion, find neutral emotion
+                    subject = file.split("_")[0]
+                    i = 1
+                    neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
                     while (not os.path.exists(neutral_file) or i > 1000):  # change to exception subject not found
                         i += 1
                         neutral_file = dataset + "\\" + "neutral" + "\\" + f"{subject}_00{i}_00000001.png"
@@ -259,7 +268,6 @@ class PreProcessor:
                     imgs.append((current_file, None))
                 file_names.append(file)
         print("Finished loading images")
-
         # pre-process images
         print("Starting image pre-processing")
         for img_pair in imgs:
@@ -267,25 +275,27 @@ class PreProcessor:
             for img in img_pair:
                 if img is None:
                     processed_pair.append(None)
-                    continue
-                img = cv.imread(img)
-                # showImages([img])
+                else:
+                    img = cv.imread(img)
+                    # showImages([img])
 
-                # grayscale
-                img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
-                # showImages([img])
+                    # grayscale
+                    img = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
+                    # showImages([img])
 
-                # blur and equalize
-                img = self.normalizeImg(img)
-                # showImages([img])
-                
-                # rotate to aligned image, normalize
-                (img, loi) = self.transform(img)
-                processed_pair.append((img, loi))
+                    # blur and equalize
+                    img = self.normalizeImg(img)
+                    # showImages([img])
+                    
+                    # rotate to aligned image, normalize
+                    (img, loi) = self.transform(img)
+                    if len(loi)==0:
+                        processed_pair.append(None)
+                        continue
+                    processed_pair.append((img, loi))
                 #showImages([img])
             processed.append(processed_pair)
         print("Finished pre-processing images")
-
         # can use manual values for cropping
         if use_optimization:
             # get optimized salient areas
@@ -304,29 +314,29 @@ class PreProcessor:
         print("Computing salient areas")
         salient_areas = []
         for i, (img_meta, na) in enumerate(processed):
+            if img_meta is not None:
+                # cimg = {}
+                cimg = np.zeros((img_size, img_size))
+                (img, loi) = img_meta
 
-            # cimg = {}
-            cimg = np.zeros((img_size, img_size))
-            (img, loi) = img_meta
+                for region in regions:
+                    left = loi[region][0] - optimal_l[region]
+                    right = loi[region][0] + optimal_l[region]
+                    top = loi[region][1] - optimal_l[region]
+                    bot = loi[region][1] + optimal_l[region]
+                    
+                    # paste salient area onto black image
+                    cimg[top:bot, left:right] = img[top:bot, left:right]
 
-            for region in regions:
-                left = loi[region][0] - optimal_l[region]
-                right = loi[region][0] + optimal_l[region]
-                top = loi[region][1] - optimal_l[region]
-                bot = loi[region][1] + optimal_l[region]
-                
-                # paste salient area onto black image
-                cimg[top:bot, left:right] = img[top:bot, left:right]
-
-                # crop_area = (img[top:bot, left:right])
-                # active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
-                # cimg[region] = active_area
-            cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
-        
-            salient_areas.append(cimg)
-            if write_dir is not None: # write to file as well
-                cv.imwrite(write_dir+"/"+file_names[i], cimg)
-            # showImages([cimg])
+                    # crop_area = (img[top:bot, left:right])
+                    # active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
+                    # cimg[region] = active_area
+                cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
+            
+                salient_areas.append(cimg)
+                if write_dir is not None: # write to file as well
+                    cv.imwrite(write_dir+"/"+file_names[i], cimg)
+                # showImages([cimg])
         print("Returning salient areas")
 
         return salient_areas
@@ -414,12 +424,12 @@ def main():
     # write_dir: if specified, will write the processed image to the directory
     # returns: array of images with the cropped salient areas
     sareas = preProcessor.preprocess(       
-                                        img_size=128,
-                                        output_size=64,
-                                        dataset="assets\\ck+_128",
-                                        emotion="anger",
-                                        eye_r=20,
-                                        mouth_r=20,
+                                        img_size=48,
+                                        output_size=48,
+                                        dataset="assets\\fer2013",
+                                        emotion="angry",
+                                        eye_r=5,
+                                        mouth_r=5,
                                         use_optimization=False,
                                         write_dir="testdir")  
 
