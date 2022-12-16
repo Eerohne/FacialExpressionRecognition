@@ -314,8 +314,8 @@ class PreProcessor:
         for i, (img_meta, na) in enumerate(processed):
             break_loop = False
             if img_meta is not None:
-                # cimg = {}
-                cimg = np.zeros((img_size, img_size))
+                cimg = {}
+                # cimg = np.zeros((img_size, img_size))
                 (img, loi) = img_meta
 
                 for region in regions:
@@ -324,25 +324,25 @@ class PreProcessor:
                     top = loi[region][1] - optimal_l[region]
                     bot = loi[region][1] + optimal_l[region]
 
-                    # break_loop = (left < 0 or right > 47 or top < 0 or bot > 47)
-                    # if break_loop:
-                    #     break
+                    break_loop = (left < 0 or right >= img_size or top < 0 or bot >= img_size)
+                    if break_loop:
+                        break
 
                     # paste salient area onto black image
-                    cimg[top:bot, left:right] = img[top:bot, left:right]
+                    # cimg[top:bot, left:right] = img[top:bot, left:right]
 
                     # crop active area and resize to a standard output size
-                    # crop_area = (img[top:bot, left:right])
-                    # active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
-                    # cimg[region] = active_area
-                cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
+                    crop_area = (img[top:bot, left:right])
+                    active_area = cv.resize(crop_area, (output_size, output_size), interpolation=cv.INTER_AREA)
+                    cimg[region] = active_area
+                # cimg = cv.resize(cimg, (output_size, output_size), interpolation=cv.INTER_AREA)
 
-                # if not break_loop:
-                salient_areas.append(cimg)
+                if not break_loop:
+                    salient_areas.append(cimg)
 
-                if write_dir is not None:  # write to file as well
-                    cv.imwrite(write_dir + "/" + file_names[i], cimg)
-                # showImages([cimg])
+                    if write_dir is not None:  # write to file as well
+                        cv.imwrite(write_dir + "/" + file_names[i], cimg)
+                    # showImages([cimg])
 
             # if break_loop:
             #     break

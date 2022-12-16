@@ -11,39 +11,6 @@ from sklearn.metrics import ConfusionMatrixDisplay
 assetFolder = "..\\assets\\FER\\test\\"
 
 
-# img = cv.imread(assetFolder + "anger\\Training_434813.jpg")
-# img = normalizeImg(img)
-#
-# visual, features = compute_feature(img)
-# plt.imshow(img, cmap="gray")
-# plt.show()
-# plt.imshow(visual, cmap="gray")
-# plt.show()
-
-# create figure
-# fig = plt.figure()
-#
-#
-# # Adds a subplot at the 1st position
-# fig.add_subplot(2, 2, 1)
-#
-# # showing image
-# plt.imshow(img, cmap="gray")
-# plt.axis('off')
-# plt.title("Image")
-#
-# # Adds a subplot at the 2nd position
-# fig.add_subplot(2, 2, 2)
-#
-# # showing image
-# plt.imshow(visual, cmap="gray")
-# plt.axis('off')
-# plt.title("HOG Features")
-#
-# plt.show()
-#
-
-
 #
 # Takes features and labels and trains an SVM model using them
 # The model fitting time is also returned
@@ -58,56 +25,95 @@ def classify(X, y):
     return svm_fer, fit_time
 
 
-#
-# Main function of this class
-#
-def main():
-    fer_train = "../assets/fer/train/"
-    fer_test = "../assets/fer/test/"
+def train_models(train_path):
+    # Extract LBP and HOG features from salient areas
+    X_salient_hog, X_salient_lbp, y_salient = extract_salient_features(dataset_path=train_path,
+                                                                       compute_hog=True,
+                                                                       compute_lbp=True,
+                                                                       hog_features_name="X_salient_hog_train",
+                                                                       lbp_feature_name="X__salient_lbp_train",
+                                                                       y_name="y_salient_train"
+                                                                       )
 
-    # Compute features on train set on whole images
-    print("Compute full features")
-    # X_full_hog_train, X_full_lbp_train, y_full_train = extract_full_features(dataset_path=fer_train, compute_hog=True,
-    #                                                                          hog_features_name="X_full_hog_train",
-    #                                                                          compute_lbp=False)
-    X_full_hog_train = pickle.load(open("../assets/features/X_full_hog_train.pkl", "rb"))
-    y_full_train = pickle.load(open("../assets/features/y_full.pkl", "rb"))
+    # Extract LBP and HOG features from the full images
+    X_full_hog, X_full_lbp, y_full = extract_full_features(dataset_path=train_path,
+                                                           compute_hog=True,
+                                                           compute_lbp=True,
+                                                           hog_features_name="X_salient_hog_train",
+                                                           lbp_feature_name="X_lpb_salient_train",
+                                                           y_name="y_salient_train"
+                                                           )
 
-    # Compute features on train set on salient part of images
-    print("Compute salient features")
-    X_salient_hog_train, X_salient_lbp_train, y_salient_train = extract_salient_features(dataset_path=fer_train,
-                                                                                         compute_hog=True,
-                                                                                         hog_features_name="X_salient_hog_train",
-                                                                                         compute_lbp=False)
-    # X_salient_hog_train = pickle.load(open("../assets/features/salient_backup/X_salient_hog_train.pkl", "rb"))
-    # y_salient_train = pickle.load(open("../assets/features/salient_backup/y_salient.pkl", "rb"))
-
-    print("Starting SVM training")
     # Train svm on full images (HOG)
-    svm_full, full_fit_time = classify(X_full_hog_train, y_full_train)
-    print("Training time for full set is: " + str(full_fit_time))
+    print("Starting Full HOG SVM training")
+    svm_full_hog, full_fit_time_hog = classify(X_full_hog, y_full)
+    print("Training time for full set with HOG is: " + str(full_fit_time_hog))
+
+    # Train svm on full images (LBP)
+    print("Starting Full LBP SVM training")
+    svm_full_lbp, full_fit_time_lbp = classify(X_full_lbp, y_full)
+    print("Training time for full set with LBP is: " + str(full_fit_time_lbp))
+
     # Train svm on salient areas (HOG)
-    svm_sal, sal_fit_time = classify(X_salient_hog_train, y_salient_train)
-    print("Training time for salient set is: " + str(sal_fit_time))
+    print("Starting Salient HOG SVM training")
+    svm_sal_hog, sal_fit_time_hog = classify(X_salient_hog, y_salient)
+    print("Training time for salient set with HOG is: " + str(sal_fit_time_hog))
 
-    # Save the model
-    pickle.dump(svm_full, open("../assets/svm/svm_hog_full.pkl", "wb"))
-    pickle.dump(svm_sal, open("../assets/svm/svm_hog_sal.pkl", "wb"))
+    # Train svm on salient areas (LBP)
+    print("Starting Salient LBP SVM training")
+    svm_sal_lbp, sal_fit_time_lbp = classify(X_salient_lbp, y_salient)
+    print("Training time for salient set with LBP is: " + str(sal_fit_time_lbp))
 
-    y_full_train_pred = svm_full.predict(X_full_hog_train)
-    y_salient_train_pred = svm_sal.predict(X_salient_hog_train)
+    # Dump all the trained models
+    pickle.dump(svm_full_hog, open("../assets/svm/svm_hog_full.pkl", "wb"))
+    pickle.dump(svm_full_lbp, open("../assets/svm/svm_lbp_full.pkl", "wb"))
+    pickle.dump(svm_sal_hog, open("../assets/svm/svm_hog_salient.pkl", "wb"))
+    pickle.dump(svm_sal_lbp, open("../assets/svm/svm_lbp_salient.pkl", "wb"))
 
-    accuracy_score_full_train = accuracy_score(y_full_train_pred, y_full_train)
-    accuracy_score_sal_train = accuracy_score(y_salient_train_pred, y_salient_train)
-
-    print("Full images accuracy on training set: " + str(accuracy_score_full_train))
-    ConfusionMatrixDisplay.from_predictions(y_full_train_pred, y_full_train)
-    plt.show()
-
-    print("Salient images accuracy on training set: " + str(accuracy_score_sal_train))
-    ConfusionMatrixDisplay.from_predictions(y_salient_train_pred, y_salient_train)
-    plt.show()
+    return svm_full_hog, svm_full_lbp, svm_sal_hog, svm_sal_lbp
 
 
-if __name__ == "__main__":
-    main()
+def test_models(test_path, svm_full_hog, svm_full_lbp, svm_sal_hog, svm_sal_lbp):
+    # Extract LBP and HOG features from salient areas
+    X_salient_hog, X_salient_lbp, y_salient = extract_salient_features(dataset_path=test_path,
+                                                                       compute_hog=True,
+                                                                       compute_lbp=True,
+                                                                       hog_features_name="X_salient_hog_train",
+                                                                       lbp_feature_name="X__salient_lbp_train",
+                                                                       y_name="y_salient_train"
+                                                                       )
+
+    # Extract LBP and HOG features from the full images
+    X_full_hog, X_full_lbp, y_full = extract_full_features(dataset_path=test_path,
+                                                           compute_hog=True,
+                                                           compute_lbp=True,
+                                                           hog_features_name="X_salient_hog_train",
+                                                           lbp_feature_name="X_lpb_salient_train",
+                                                           y_name="y_salient_train"
+                                                           )
+
+    # Predict full models
+    y_full_hog = svm_full_hog.predict(X_full_hog)
+    y_full_lbp = svm_full_hog.predict(X_full_lbp)
+
+    # Predict salient models
+    y_sal_hog = svm_full_hog.predict(X_salient_hog)
+    y_sal_lbp = svm_full_hog.predict(X_salient_lbp)
+
+    # Get accuracies of each model
+    accuracy_score_full_hog = accuracy_score(y_full_hog, y_full)
+    accuracy_score_full_lbp = accuracy_score(y_full_lbp, y_full)
+    accuracy_score_sal_lbp = accuracy_score(y_sal_lbp, y_salient)
+    accuracy_score_sal_hog = accuracy_score(y_sal_hog, y_salient)
+
+    # Print accuracies
+    print("SVM Full HOG Accuracy: " + str(accuracy_score_full_hog))
+    print("SVM Full LBP Accuracy: " + str(accuracy_score_full_lbp))
+    print("SVM Salient HOG Accuracy: " + str(accuracy_score_sal_hog))
+    print("SVM Salient HOG Accuracy: " + str(accuracy_score_sal_lbp))
+
+    return accuracy_score_full_hog, accuracy_score_full_lbp, accuracy_score_sal_hog, accuracy_score_sal_lbp
+
+# Code to show the confusion matrix
+# ConfusionMatrixDisplay.from_predictions(y_salient_test_pred, y_salient_test)
+# plt.show()

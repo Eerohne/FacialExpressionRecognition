@@ -18,67 +18,26 @@ import numpy as np
 def compute_hog_feature(img,
                         orientations=9,
                         cell_r=8,
-                        block_r=2):
+                        block_r=2,
+                        visualize=False):
+
+    # Extract HOG Features
     hog_feature = hog(img, orientations=orientations, pixels_per_cell=(cell_r, cell_r),
-                      cells_per_block=(block_r, block_r), visualize=False, feature_vector=True)
+                      cells_per_block=(block_r, block_r), visualize=visualize, feature_vector=True)
     return hog_feature
 
 
 def compute_lbp_feature(img):
+    # Get LBP Image
     lbp_img = local_binary_pattern(img, 8, 1)
 
-    lbp_hist, _ = np.histogram(lbp_img.ravel(), bins=np.arange(0, 11), range=(0, 10))
+    # Convert it to histogram
+    lbp_hist, _ = np.histogram(lbp_img.ravel(), bins=np.arange(0, 11), range=(0, 256))
 
+    # Normalize histogram
     lbp_hist = lbp_hist.astype("float")
     lbp_hist /= (lbp_hist.sum() + 1e-10)
-    return lbp_img, lbp_hist
-
-
-#
-# This function extracts the features of one emotion only and saves them into one .mat file with the format:
-# <emotion>.mat
-#
-# def extract_emotion_features(emotion, salient_areas):
-#     emotion_dict = {}
-#     for i in range(0, len(salient_areas)):
-#         feature_dict = {}
-#         for area, imgreg in salient_areas[i].items():
-#             feature = compute_feature(imgreg)
-#             feature_dict[area] = feature
-#
-#         feature_matrix = list(feature_dict.values())
-#         emotion_dict["img" + str(i + 1)] = np.array(feature_matrix)
-#
-#     return emotion_dict
-
-
-#
-# Extract features from dataset and saves them to storage for access by matlab script
-#
-# emotions contains the labels to be detected by our model
-# sout is the path to which the features will be exported
-# debug activates the debugging mode and does not run the actual feature extraction part of the method
-# salient_areas is only used in debug mode
-#
-# def extract_features(emotions=["anger", "contempt", "disgust", "fear", "happiness", "sadness", "surprise"],
-#                      sout="../assets/matfeatures/",
-#                      debug=False,
-#                      salient_areas=None,
-#                      debug_emo="anger"):
-#     if debug:
-#         if salient_areas is None:
-#             salient_areas = preprocess(debug_emo, use_optimization=True)
-#
-#         anger_features = extract_emotion_features(debug_emo, salient_areas)
-#         savemat(sout + debug_emo + ".mat", anger_features)
-#
-#     else:
-#         for emotion in emotions:
-#             salient_areas = preprocess(emotion=emotion, use_optimization=True)
-#             print("Start extracting features for: " + emotion)
-#             emotion_features = extract_emotion_features(emotion, salient_areas)
-#             savemat(sout + emotion + ".mat", emotion_features)
-#             print("Done extracting features for: " + emotion)
+    return lbp_hist
 
 
 #
@@ -88,9 +47,10 @@ def extract_salient_features(emotions=["anger", "neutral", "disgust", "fear", "h
                              dataset_path="../assets/FER/train/",
                              features_save_path="../assets/features/",
                              compute_hog=True,
-                             hog_features_name="X_hog",
+                             hog_features_name="X_sal_hog",
                              compute_lbp=False,
-                             lbp_feature_name="X_lbp"):
+                             lbp_feature_name="X_sal_lbp",
+                             y_name="y_salient"):
     # Initialize feature arrays
     X_hog = []  # Contains HOG features for each image
     X_lbp = []  # Contains LBP features for each image
@@ -102,25 +62,25 @@ def extract_salient_features(emotions=["anger", "neutral", "disgust", "fear", "h
                                         img_size=48,
                                         output_size=10,
                                         dataset=dataset_path,
-                                        emotion="anger",
+                                        emotion=emotion,
                                         eye_r=8,
                                         mouth_r=12,
                                         use_optimization=False)
 
         for img_regs in salient_areas:
-            # image_features_hog = []
-            # image_features_lbp = []
+            image_features_hog = []
+            image_features_lbp = []
 
-            #for sal_name, sal_img in img_regs.items():
-            if compute_hog:
-                # image_features_hog = image_features_hog + compute_hog_feature(img=sal_img, cell_r=2).tolist()
-                X_hog.append(compute_hog_feature(img=img_regs).tolist())
-            if compute_lbp:
-                # image_features_lbp = image_features_lbp + compute_lbp_feature(sal_img)
-                X_lbp.append(compute_lbp_feature(img_regs))
+            for sal_name, sal_img in img_regs.items():
+                if compute_hog:
+                    image_features_hog = image_features_hog + compute_hog_feature(img=sal_img, cell_r=2).tolist()
+                    # X_hog.append(compute_hog_feature(img=img_regs).tolist())
+                if compute_lbp:
+                    image_features_lbp = image_features_lbp + compute_lbp_feature(sal_img).tolist()
+                    # X_lbp.append(compute_lbp_feature(img_regs))
 
-            # X_hog.append(np.array(image_features_hog))
-            # X_lbp.append(np.array(image_features_lbp))
+            X_hog.append(np.array(image_features_hog))
+            X_lbp.append(np.array(image_features_lbp))
             y.append(emotion)
 
     # Pickle the computed features to avoid repetitive computations
@@ -129,7 +89,7 @@ def extract_salient_features(emotions=["anger", "neutral", "disgust", "fear", "h
     if compute_lbp:
         pickle.dump(X_lbp, open(features_save_path + lbp_feature_name + ".pkl", "wb"))
 
-    pickle.dump(y, open(features_save_path + "y_salient.pkl", "wb"))
+    pickle.dump(y, open(features_save_path + y_name + ".pkl", "wb"))
     return X_hog, X_lbp, y
 
 
@@ -140,9 +100,10 @@ def extract_full_features(emotions=["anger", "neutral", "disgust", "fear", "happ
                           dataset_path="../assets/FER/train/",
                           features_save_path="../assets/features/",
                           compute_hog=True,
-                          hog_features_name="X_hog",
+                          hog_features_name="X_full_hog",
                           compute_lbp=False,
-                          lbp_feature_name="X_lbp"):
+                          lbp_feature_name="X_full_lbp",
+                          y_name="y_full"):
     # Initialize feature arrays
     X_hog = []  # Contains HOG features for each image
     X_lbp = []  # Contains LBP features for each image
@@ -171,25 +132,47 @@ def extract_full_features(emotions=["anger", "neutral", "disgust", "fear", "happ
     if compute_lbp:
         pickle.dump(X_lbp, open(features_save_path + lbp_feature_name + ".pkl", "wb"))
 
-    pickle.dump(y, open(features_save_path + "y_full.pkl", "wb"))
+    pickle.dump(y, open(features_save_path + y_name + ".pkl", "wb"))
     return X_hog, X_lbp, y
 
 
 
 if __name__ == "__main__":
     proc = PreProcessor()
-    im1 = cv.imread("../assets/FER/anger/")
+    #im1 = cv.imread("../assets/S026_003_00000013.png")
+    im1 = cv.imread("../assets/ck+_128/anger/S010_004_00000019.png")
     im1 = cv.cvtColor(im1, cv.COLOR_BGR2GRAY)
     im1 = proc.normalizeImg(im1)
     plt.imshow(im1, cmap="gray")
+    #plt.imsave("D:\\Files\\School\\McGill\\Fall2022\\COMP558\\report\\hog feature figures\\angry_face_no_lbp.png", im1, cmap="gray")
     plt.show()
 
 
-    # im1_lbp_im, im1_lbp_feature = compute_lbp_feature(im1)
+# Code used to show an example of HOG feature extraction
     #
-    # plt.imshow(im1_lbp_im, cmap="gray")
+    # im1_hog_feats, im1_hog_img = compute_hog_feature(im1, visualize=True)
+    # #
+    # plt.imshow(im1_hog_img, cmap="gray")
+    # #plt.imsave("D:\\Files\\School\\McGill\\Fall2022\\COMP558\\report\\hog feature figures\\angry_face_hog.png", im1_hog_img, cmap="gray")
     # plt.show()
+    #
 
+
+# Code used to showcase LBP image
+    im1_lbp_im, im1_lbp_feature = compute_lbp_feature(im1)
+
+    plt.imshow(im1_lbp_im, cmap="gray")
+    #plt.imsave("D:\\Files\\School\\McGill\\Fall2022\\COMP558\\report\\hog feature figures\\angry_face_lbp.png", im1_lbp_im, cmap="gray")
+    plt.show()
+
+    lbp_hist, bins = np.histogram(im1_lbp_im.ravel(), bins=np.arange(0, 11), range=(0, 256))
+
+    lbp_hist = lbp_hist.astype("float")
+    lbp_hist /= (lbp_hist.sum() + 1e-10)
+
+    # Use pyplot.hist to plot the histogram
+    plt.hist(bins[:-1], bins, weights=lbp_hist)
+    plt.show()
 
 
 
