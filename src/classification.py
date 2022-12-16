@@ -8,7 +8,6 @@ import matplotlib.pyplot as plt
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import ConfusionMatrixDisplay
 
-
 assetFolder = "..\\assets\\FER\\test\\"
 
 
@@ -45,95 +44,16 @@ assetFolder = "..\\assets\\FER\\test\\"
 #
 
 
-emotions = ["anger", "disgust", "fear", "happiness", "sadness", "surprise"]
-
-X=[]
-y=[]
-count = 0
-
-print("Starting Train feature extraction")
-for emotion in emotions:
-    count_emotion = 1
-    for subdir, dirs, files in os.walk(assetFolder + emotion):
-        for file in files:
-            img = cv.imread(assetFolder + emotion + "\\" + file)
-            img = normalizeImg(img)
-
-            hog_vis, hog_features = compute_feature(img)
-
-
-            X.append(hog_features)
-            y.append(emotion)
-            count += 1
-            count_emotion += 1
-    print("Emotion " + emotion + ", Number of Images Total: " + str(count_emotion))
-
-print("Ended feature extraction")
-print("Length of X: " + str(len(X)))
-print("Length of y: " + str(len(y)))
-
-pickle.dump(X, open("..\\assets\\X.pkl", 'wb'))
-pickle.dump(y, open("..\\assets\\y.pkl", 'wb'))
-
-
-print("Load the dataset")
-X = pickle.load(open("..\\assets\\X.pkl", 'rb'))
-y = pickle.load(open("..\\assets\\y.pkl", 'rb'))
-
-
-import time
-startTime = time.time()
-
-print("Start to Train SVM")
-svm_clf = svm.LinearSVC(max_iter=10000)
-svm_clf.fit(X, y)
-
-executionTime = (time.time() - startTime)
-print('Execution time in seconds: ' + str(executionTime))
-
-print("Dumping the model")
-pickle.dump(svm_clf, open("..\\assets\\svm.pkl", 'wb'))
-
-print(accuracy_score(svm_clf.predict(X), y))
-
-
-print("Starting Test feature extraction")
-for emotion in emotions:
-    count_emotion = 1
-    for subdir, dirs, files in os.walk(assetFolder + emotion):
-        for file in files:
-            img = cv.imread(assetFolder + emotion + "\\" + file)
-            img = normalizeImg(img)
-
-            hog_vis, hog_features = compute_feature(img)
-
-
-            X.append(hog_features)
-            y.append(emotion)
-            count += 1
-            count_emotion += 1
-    print("Emotion " + emotion + ", Number of Images Total: " + str(count_emotion))
-
-print("Ended feature extraction")
-print("Length of X: " + str(len(X)))
-print("Length of y: " + str(len(y)))
-
-
-svm_clf = pickle.load(open("..\\assets\\svm.pkl", 'rb'))
-
-print(accuracy_score(svm_clf.predict(X), y))
-
-
 #
 # Takes features and labels and trains an SVM model using them
 # The model fitting time is also returned
 #
 def classify(X, y):
     start_time = time.time()
-    svm_fer = svm.LinearSVC()
+    svm_fer = svm.LinearSVC(max_iter=10000)
     svm_fer.fit(X, y)
 
-    fit_time = start_time - time.time()
+    fit_time = time.time() - start_time
 
     return svm_fer, fit_time
 
@@ -145,12 +65,49 @@ def main():
     fer_train = "../assets/fer/train/"
     fer_test = "../assets/fer/test/"
 
-    X_full_hog, X_full_lbp, y_full = extract_full_features()
-    X_full_hog, X_full_lbp, y_full = extract_salient_features()
+    # Compute features on train set on whole images
+    print("Compute full features")
+    # X_full_hog_train, X_full_lbp_train, y_full_train = extract_full_features(dataset_path=fer_train, compute_hog=True,
+    #                                                                          hog_features_name="X_full_hog_train",
+    #                                                                          compute_lbp=False)
+    X_full_hog_train = pickle.load(open("../assets/features/X_full_hog_train.pkl", "rb"))
+    y_full_train = pickle.load(open("../assets/features/y_full.pkl", "rb"))
 
+    # Compute features on train set on salient part of images
+    print("Compute salient features")
+    X_salient_hog_train, X_salient_lbp_train, y_salient_train = extract_salient_features(dataset_path=fer_train,
+                                                                                         compute_hog=True,
+                                                                                         hog_features_name="X_salient_hog_train",
+                                                                                         compute_lbp=False)
+    # X_salient_hog_train = pickle.load(open("../assets/features/salient_backup/X_salient_hog_train.pkl", "rb"))
+    # y_salient_train = pickle.load(open("../assets/features/salient_backup/y_salient.pkl", "rb"))
 
+    print("Starting SVM training")
+    # Train svm on full images (HOG)
+    svm_full, full_fit_time = classify(X_full_hog_train, y_full_train)
+    print("Training time for full set is: " + str(full_fit_time))
+    # Train svm on salient areas (HOG)
+    svm_sal, sal_fit_time = classify(X_salient_hog_train, y_salient_train)
+    print("Training time for salient set is: " + str(sal_fit_time))
+
+    # Save the model
+    pickle.dump(svm_full, open("../assets/svm/svm_hog_full.pkl", "wb"))
+    pickle.dump(svm_sal, open("../assets/svm/svm_hog_sal.pkl", "wb"))
+
+    y_full_train_pred = svm_full.predict(X_full_hog_train)
+    y_salient_train_pred = svm_sal.predict(X_salient_hog_train)
+
+    accuracy_score_full_train = accuracy_score(y_full_train_pred, y_full_train)
+    accuracy_score_sal_train = accuracy_score(y_salient_train_pred, y_salient_train)
+
+    print("Full images accuracy on training set: " + str(accuracy_score_full_train))
+    ConfusionMatrixDisplay.from_predictions(y_full_train_pred, y_full_train)
+    plt.show()
+
+    print("Salient images accuracy on training set: " + str(accuracy_score_sal_train))
+    ConfusionMatrixDisplay.from_predictions(y_salient_train_pred, y_salient_train)
+    plt.show()
 
 
 if __name__ == "__main__":
     main()
-
