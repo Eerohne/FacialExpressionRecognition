@@ -1,6 +1,4 @@
 from sklearn import svm
-import cv2 as cv
-import os
 import pickle
 from extraction import extract_full_features, extract_salient_features
 import time

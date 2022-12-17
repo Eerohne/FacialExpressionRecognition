@@ -15,6 +15,12 @@ pip install cmake
 
 pip install dlib
 
+#### For feature extraction and classification
+
+pip install scikit-learn
+
+pip install scikit-image
+
 #### Using requirements.txt
 pip install -r requirements.txt
 

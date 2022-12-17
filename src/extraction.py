@@ -3,7 +3,6 @@ import pickle
 import matplotlib.pyplot as plt
 from skimage.feature import hog
 from skimage.feature import local_binary_pattern
-from scipy.io import savemat
 import cv2 as cv
 import os
 from preprocessing import PreProcessor
