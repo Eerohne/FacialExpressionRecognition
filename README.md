@@ -1,6 +1,5 @@
 # FacialExpressionRecognition
-A Computer Vision project made for McGill's COMP 558 class. 
-
+A FER project done in the context of  McGill's COMP 558 class. Salient feature isolation, feature extraction, and feature classification are all done in this project.
 ## Get started
 
 ### Required installations
