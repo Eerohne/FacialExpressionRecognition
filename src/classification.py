@@ -26,22 +26,24 @@ def classify(X, y):
 
 
 def train_models(train_path):
+    print("Salient features extraction")
     # Extract LBP and HOG features from salient areas
     X_salient_hog, X_salient_lbp, y_salient = extract_salient_features(dataset_path=train_path,
                                                                        compute_hog=True,
                                                                        compute_lbp=True,
                                                                        hog_features_name="X_salient_hog_train",
-                                                                       lbp_feature_name="X__salient_lbp_train",
+                                                                       lbp_feature_name="X_salient_lbp_train",
                                                                        y_name="y_salient_train"
                                                                        )
 
+    print("Full features extraction")
     # Extract LBP and HOG features from the full images
     X_full_hog, X_full_lbp, y_full = extract_full_features(dataset_path=train_path,
                                                            compute_hog=True,
                                                            compute_lbp=True,
-                                                           hog_features_name="X_salient_hog_train",
-                                                           lbp_feature_name="X_lpb_salient_train",
-                                                           y_name="y_salient_train"
+                                                           hog_features_name="X_full_hog_train",
+                                                           lbp_feature_name="X_full_lbp_train",
+                                                           y_name="y_full_train"
                                                            )
 
     # Train svm on full images (HOG)
@@ -74,31 +76,33 @@ def train_models(train_path):
 
 
 def test_models(test_path, svm_full_hog, svm_full_lbp, svm_sal_hog, svm_sal_lbp):
+    print("Test Salient features extraction")
     # Extract LBP and HOG features from salient areas
     X_salient_hog, X_salient_lbp, y_salient = extract_salient_features(dataset_path=test_path,
                                                                        compute_hog=True,
                                                                        compute_lbp=True,
-                                                                       hog_features_name="X_salient_hog_train",
-                                                                       lbp_feature_name="X__salient_lbp_train",
-                                                                       y_name="y_salient_train"
+                                                                       hog_features_name="X_salient_hog_test",
+                                                                       lbp_feature_name="X_salient_lbp_test",
+                                                                       y_name="y_salient_test"
                                                                        )
 
+    print("Test Full features extraction")
     # Extract LBP and HOG features from the full images
     X_full_hog, X_full_lbp, y_full = extract_full_features(dataset_path=test_path,
                                                            compute_hog=True,
                                                            compute_lbp=True,
-                                                           hog_features_name="X_salient_hog_train",
-                                                           lbp_feature_name="X_lpb_salient_train",
-                                                           y_name="y_salient_train"
+                                                           hog_features_name="X_full_hog_test",
+                                                           lbp_feature_name="X_full_lbp_test",
+                                                           y_name="y_full_test"
                                                            )
 
     # Predict full models
     y_full_hog = svm_full_hog.predict(X_full_hog)
-    y_full_lbp = svm_full_hog.predict(X_full_lbp)
+    y_full_lbp = svm_full_lbp.predict(X_full_lbp)
 
     # Predict salient models
-    y_sal_hog = svm_full_hog.predict(X_salient_hog)
-    y_sal_lbp = svm_full_hog.predict(X_salient_lbp)
+    y_sal_hog = svm_sal_hog.predict(X_salient_hog)
+    y_sal_lbp = svm_sal_lbp.predict(X_salient_lbp)
 
     # Get accuracies of each model
     accuracy_score_full_hog = accuracy_score(y_full_hog, y_full)
@@ -107,10 +111,10 @@ def test_models(test_path, svm_full_hog, svm_full_lbp, svm_sal_hog, svm_sal_lbp)
     accuracy_score_sal_hog = accuracy_score(y_sal_hog, y_salient)
 
     # Print accuracies
-    print("SVM Full HOG Accuracy: " + str(accuracy_score_full_hog))
-    print("SVM Full LBP Accuracy: " + str(accuracy_score_full_lbp))
-    print("SVM Salient HOG Accuracy: " + str(accuracy_score_sal_hog))
-    print("SVM Salient HOG Accuracy: " + str(accuracy_score_sal_lbp))
+    print("SVM Full HOG Test Accuracy: " + str(accuracy_score_full_hog))
+    print("SVM Full LBP Test Accuracy: " + str(accuracy_score_full_lbp))
+    print("SVM Salient HOG Test Accuracy: " + str(accuracy_score_sal_hog))
+    print("SVM Salient LBP Test Accuracy: " + str(accuracy_score_sal_lbp))
 
     return accuracy_score_full_hog, accuracy_score_full_lbp, accuracy_score_sal_hog, accuracy_score_sal_lbp
 

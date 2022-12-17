@@ -1,48 +1,51 @@
-# example usage of preprocessing.py
-#from preprocessing import preprocess  # import preprocess()
-from preprocessing_single import PreProcessor  # import preprocess()
-import cv2 as cv
-import matplotlib.pyplot as plt
-# from extraction import extract_features  # import extract_features()
+import pickle
+from sklearn.metrics import accuracy_score
+from classification import train_models, test_models
 
 
-emo = "anger"
+# Code to train models and test accuracy
+# svm_full_hog, svm_full_lbp, svm_sal_hog, svm_sal_lbp = train_models("../assets/FER/train/")
+# acc_score_full_hog, acc_score_full_lbp, acc_score_sal_hog, acc_score_sal_lbp = test_models("../assets/FER/test/",
+#                                                                                            svm_full_hog,
+#                                                                                            svm_full_lbp,
+#                                                                                            svm_sal_hog,
+#                                                                                            svm_sal_lbp)
 
-# these are the default parameters of preprocess
-# def preprocess(detector=dlib.get_frontal_face_detector(), 
-#                predictor=dlib.shape_predictor('assets/landmarkModel/shape_predictor_68_face_landmarks.dat'),
-#                img_size=128,
-#                dataset="assets\\ck+_128",
-#                emotion="anger",
-#                output_size=64,
-#                use_optimization = False,
-#                write_dir=None):
-# 
-# if use_optimization is false, there is a manual 20 pixel radius bounding box that is used
-# 
-# returns:
-# salient_areas will be an array of dictionaries, each one representing an image "img"
-#   img = {"leye": <left_eye_salient_area>, "reye": <>, "mouth": <>}
-#   salient_areas = [img1, img2, img3,..., imgn]
-# salient_areas = preprocess(emotion="surprise", use_optimization=True)
+# Load values
+svm_full_hog = pickle.load(open("../assets/svm/svm_hog_full.pkl", "rb"))
+svm_full_lbp = pickle.load(open("../assets/svm/svm_lbp_full.pkl", "rb"))
+svm_sal_hog = pickle.load(open("../assets/svm/svm_hog_salient.pkl", "rb"))
+svm_sal_lbp = pickle.load(open("../assets/svm/svm_lbp_salient.pkl", "rb"))
 
-# single example
-# img = cv.imread(r"..\assets\FER\train\anger\Training_267631.jpg")
-# preProcessor = PreProcessor()
-# sareas = preProcessor.preprocess(img) # np.array of black image w/ salient areas cropped
-#
-# plt.imshow(sareas)
-# plt.show()
-#
+# Load training sets
+X_full_hog = pickle.load(open("../assets/features/X_full_hog_train.pkl", "rb"))
+X_full_lbp = pickle.load(open("../assets/features/X_full_lbp_train.pkl", "rb"))
+X_salient_hog = pickle.load(open("../assets/features/X_salient_hog_train.pkl", "rb"))
+X_salient_lbp = pickle.load(open("../assets/features/X_salient_lbp_train.pkl", "rb"))
+
+y_full = pickle.load(open("../assets/features/y_full_train.pkl", "rb"))
+y_sal = pickle.load(open("../assets/features/y_salient_train.pkl", "rb"))
 
 
-#
-# Testing the extraction of features
-#
-#extract_features(salient_areas=salient_areas, debug=True, debug_emo=emo)
+# Predict values
+y_full_hog_pred = svm_full_hog.predict(X_full_hog)
+y_full_lbp_pred = svm_full_lbp.predict(X_full_lbp)
+y_sal_hog_pred = svm_sal_hog.predict(X_salient_hog)
+y_sal_lbp_pred = svm_sal_lbp.predict(X_salient_lbp)
 
-# Extract all features from dataset. Each emotion will have its own .mat file generated that will contain all the features within its corresponding images
-#extract_features()
+# Compute accuracies
+accuracy_score_full_hog = accuracy_score(y_full_hog_pred, y_full)
+accuracy_score_full_lbp = accuracy_score(y_full_lbp_pred, y_full)
+accuracy_score_sal_lbp = accuracy_score(y_sal_hog_pred, y_sal)
+accuracy_score_sal_hog = accuracy_score(y_sal_lbp_pred, y_sal)
+
+print("SVM Full HOG Train Accuracy: " + str(accuracy_score_full_hog))
+print("SVM Full LBP Train Accuracy: " + str(accuracy_score_full_lbp))
+print("SVM Salient HOG Train Accuracy: " + str(accuracy_score_sal_hog))
+print("SVM Salient LBP Train Accuracy: " + str(accuracy_score_sal_lbp))
+
+
+
 
 
 
